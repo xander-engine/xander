@@ -1,0 +1,12 @@
+[package]
+name = "xander-engine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "xander"
+path = "src/lib.rs"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8.5"
