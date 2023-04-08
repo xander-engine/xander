@@ -5,3 +5,4 @@
 )]
 
 pub mod dice;
+pub mod ability;
