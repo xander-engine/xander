@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub, Mul, Div};
 
-use super::rolls::RollType;
+use super::{rolls::RollType, Roll, Die};
 
 ///
 /// Represents an arithmetic operation. 
@@ -155,13 +155,8 @@ pub trait Modifier : std::fmt::Debug {
     ) -> Option<i32>;
 }
 
-
-#[cfg(test)]
-mod tests {
-    use crate::dice::{modifiers::{Modifier, IntoModifier}, Die, rolls::Roll, D20};
-
-    #[derive(Debug, Clone, Copy)]
-    struct Advantage<D : Die + std::fmt::Debug + Copy>(D);
+#[derive(Debug, Clone, Copy)]
+pub struct Advantage<D : Die + std::fmt::Debug + Copy>(pub D);
 
     impl<D : Die + std::fmt::Debug + Copy + 'static> IntoModifier for Advantage<D> {
         fn into_modifier(&self) -> Box<dyn Modifier> {
@@ -210,6 +205,14 @@ mod tests {
         }
     }
 
+
+#[cfg(test)]
+mod tests {
+    use crate::dice::{modifiers::{Modifier, IntoModifier}, Die, rolls::Roll, D20};
+
+    use super::Advantage;
+
+    
     #[test]
     fn advantage() {
         D20(2)

@@ -289,12 +289,22 @@ pub fn skills(tokens : TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn proficiency(tokens : TokenStream) -> TokenStream {
 
-    struct ProfDecl(Ident, Paren, Punctuated<Path, Token![+]>);
+    struct ProfDecl(Ident, Paren, Punctuated<Path, Token![+]>, Option<Token![~]>, Option<Path>);
 
     impl Parse for ProfDecl {
         fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
             let inner;
-            Ok(Self(input.parse()?, parenthesized!(inner in input), inner.parse_terminated(Path::parse, Token![+])?))
+            Ok(Self(
+                input.parse()?, 
+                parenthesized!(inner in input), 
+                Punctuated::parse_separated_nonempty(&inner)?,
+                inner.peek(Token![~])
+                    .then(|| inner.parse::<Token![~]>())
+                    .and_then(Result::ok),
+                    inner.peek(Ident)
+                    .then(|| inner.parse())
+                    .and_then(Result::ok),
+            ))
         }
     }
 
@@ -303,19 +313,23 @@ pub fn proficiency(tokens : TokenStream) -> TokenStream {
     let ident = &prof.0;
     let traits = prof.2.into_iter().collect::<Vec<_>>();
 
+    let struct_traits : Vec<_> = prof.4
+        .map(|a| traits.iter().cloned().chain(std::iter::once(a)).collect())
+        .unwrap_or(traits.iter().cloned().collect());
+
     let id = format!("5E::PROFICIENCY::{}", ident.to_string().to_uppercase());
     
     quote! {
-        #[derive(std::fmt::Debug, core::hash::Hash, core::cmp::PartialEq, core::cmp::Eq)]
-            pub struct #ident<T: #(#traits)+* + std::fmt::Debug + core::hash::Hash + core::cmp::Eq>(pub T);
+            #[derive(std::fmt::Debug, core::hash::Hash, core::cmp::PartialEq, core::cmp::Eq)]
+            pub struct #ident<T: #(#struct_traits)+* + std::fmt::Debug + core::hash::Hash + core::cmp::Eq>(pub T);
 
-            impl<T: #(#traits)+* + std::fmt::Debug + core::hash::Hash + core::cmp::Eq> Proficiency<T> for #ident<T> {
+            impl<T: #(#struct_traits)+* + std::fmt::Debug + core::hash::Hash + core::cmp::Eq> Proficiency<T> for #ident<T> {
                 fn value(&self) -> &T {
                     &self.0
                 }
             }
 
-            impl<T: #(#traits)+* + std::fmt::Debug + core::hash::Hash + core::cmp::Eq> Identity for #ident<T> {
+            impl<T: #(#struct_traits)+* + std::fmt::Debug + core::hash::Hash + core::cmp::Eq> Identity for #ident<T> {
                 fn id(&self) -> &'static str { #id }
                 fn __id()    -> &'static str
                     where Self : Sized { #id }

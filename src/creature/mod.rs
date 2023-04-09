@@ -4,7 +4,7 @@ use std::{collections::{HashMap, HashSet}, any::Any, hash::Hash, ops::Div};
 
 use crate::{ability::{Check, Save, Ability, Saves, Checks}, identity::Identity, dice::{D20, Rolls}};
 
-use self::proficiency::{Proficiency, Proficiencies};
+use self::proficiency::{Proficiency, Proficiencies, ProficiencyType};
 
 #[derive(Debug)]
 pub struct Creature(HashMap<&'static str, usize>, Proficiencies);
@@ -18,9 +18,10 @@ impl Creature {
             .copied()
     }
 
-    fn modifier<A : Ability + ?Sized, T : Into<Box<A>>>(&self, ability :T) -> Option<i32> {
+    fn modifier<A : Ability + ?Sized, T : Into<Box<A>>>(&self, ability :T) -> Option<i32>
+    {
         self.score(ability)
-            .map(|a| (a as i32 - 10).div(2))
+            .map(|a| (a as i32 - 10).div_floor(2))
     }
 
     fn check<C : Check + Hash + Eq>(&self, metric : C) -> Rolls 
@@ -28,18 +29,18 @@ impl Creature {
         D20() 
             + self.modifier::<dyn Ability, Box<dyn Ability>>(C::base()).unwrap()
             + self.proficient(Checks(metric))
-                .then_some(self.proficency_modifier())
+                .map(|t| t.bonus(self, self.proficency_modifier()))
                 .unwrap_or(0)
     }
 
     fn save<S : Save + Ability + Hash + Eq>(&self, metric : S) -> Rolls 
     {
         D20() + self.proficient(Saves(metric))
-            .then_some(self.proficency_modifier())
+            .map(|t| t.bonus(self, self.proficency_modifier()))
             .unwrap_or(0)
     }
 
-    fn proficient<I, P>(&self, prof : P) -> bool 
+    fn proficient<I, P>(&self, prof : P) -> Option<&dyn ProficiencyType> 
         where 
             I : Identity + Hash + Eq,
             P : Proficiency<I>
@@ -62,7 +63,7 @@ mod tests {
 
     use std::{collections::HashMap};
 
-    use crate::{ability::{skills::{History, Skill, Performance}, Strength, Ability, Dexterity, Checks, Constitution, Intelligence, Wisdom, Charisma}, creature::proficiency::Proficiency, identity::Identity};
+    use crate::{ability::{skills::{History, Performance}, Strength,  Dexterity, Checks, Constitution, Intelligence, Wisdom, Charisma}, creature::proficiency::Proficiency, identity::Identity};
 
     use super::{Creature, proficiency::Proficiencies};
 
