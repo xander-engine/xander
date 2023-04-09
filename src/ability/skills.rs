@@ -1,9 +1,12 @@
+use core::hash::Hash;
+
 use xander_macros::skills;
 
-use super::{Ability, Checkable, Strength, Intelligence, Dexterity, Wisdom, Charisma};
+use crate::{creature::proficiency::{Proficiency}, identity::Identity};
 
-pub trait Skill : Checkable {
-    fn id(&self) -> &'static str;
+use super::{Ability, Check, Strength, Intelligence, Dexterity, Wisdom, Charisma};
+
+pub trait Skill : Check + Identity {
     fn base(&self) -> Box<dyn Ability>;
 }
 

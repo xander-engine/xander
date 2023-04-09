@@ -34,7 +34,7 @@ use std::{ops::{Add, Sub, Div, Mul}};
 use rand::Rng;
 use xander_macros::dice;
 
-use self::rolls::{Rolls, Roll};
+pub use rolls::{Rolls, Roll};
 
 ///
 /// Supertrait for all dice.

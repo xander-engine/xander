@@ -6,3 +6,5 @@
 
 pub mod dice;
 pub mod ability;
+pub mod creature;
+pub mod identity;
