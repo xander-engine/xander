@@ -16,7 +16,7 @@ use super::Creature;
 /// 
 /// ```
 /// use xander_macros::proficiency;
-/// use fifth_types::{
+/// use xander::{
 ///     creature::proficiency::Proficiency,
 ///     identity::Identity,
 ///     ability::Ability

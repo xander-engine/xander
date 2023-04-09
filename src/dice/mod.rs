@@ -5,18 +5,18 @@
 //! ***
 //! Using preset dice:
 //! ```
-//! use fifth_types::dice::*;
+//! use xander::dice::*;
 //! 
 //! fn main() {
 //!     let d6 = D6;        // Make a new D6.
 //!     let damage = d6(2); // Roll twice.
-//!     println!("You shall take {} damage!", damage.iter().sum::<i32>())
+//!     println!("You shall take {} damage!", damage.total())
 //! }
 //! ```
 //! ***
 //! Using the generic, `N`-sided die:
 //! ```
-//! use fifth_types::dice::*;
+//! use xander::dice::*;
 //! 
 //! fn main() {
 //!     let sides = 123;
@@ -85,7 +85,7 @@ dice!(4, 6, 8, 10, 12, 20, 100);
 /// 
 /// ### Example
 /// ```
-/// use fifth_types::dice::*;
+/// use xander::dice::*;
 /// 
 /// fn main() {
 ///     let sides = 123;
