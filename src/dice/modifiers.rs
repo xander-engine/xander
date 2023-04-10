@@ -1,25 +1,25 @@
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Div, Mul, Sub};
 
-use super::{rolls::RollType, Roll, Die};
+use super::{rolls::RollType, Die, Roll};
 
 ///
-/// Represents an arithmetic operation. 
-/// 
+/// Represents an arithmetic operation.
+///
 #[derive(Debug, PartialEq)]
 pub enum Arithmetic {
     Add(i32),
     Sub(i32),
     Mul(i32),
-    Div(i32)
+    Div(i32),
 }
 
 ///
 /// Algebraic variable to allow for closures
 /// to be auto-magically converted to [Modifier]s.
-/// 
+///
 #[derive(Debug, PartialEq)]
 pub struct Var {
-    last_op : Option<Arithmetic>
+    last_op: Option<Arithmetic>,
 }
 
 impl const Add<i32> for Var {
@@ -65,17 +65,17 @@ pub trait IntoModifier {
     fn into_modifier(&self) -> Box<dyn Modifier>;
 }
 
-impl<F : ~const Fn(Var) -> Var> IntoModifier for F
-{
+impl<F: ~const Fn(Var) -> Var> IntoModifier for F {
     fn into_modifier(&self) -> Box<dyn Modifier>
-        where Self : Sized
+    where
+        Self: Sized,
     {
         Box::new({
-            let x  = self(Var::default());
+            let x = self(Var::default());
             x.last_op.unwrap()
         })
     }
-} 
+}
 
 impl Modifier for Arithmetic {
     fn id(&self) -> &'static str {
@@ -97,19 +97,17 @@ impl Modifier for Arithmetic {
             Sub(_) => "-",
             Mul(_) => "*",
             Div(_) => "/",
-        }.into() 
+        }
+        .into()
     }
 
-    fn apply(
-        &self, 
-        raw_rolls : Vec<(& usize, &mut Vec<RollType>)>
-    ) -> Option<i32> {
+    fn apply(&self, raw_rolls: Vec<(&usize, &mut Vec<RollType>)>) -> Option<i32> {
         use Arithmetic::*;
 
-        let subtotal = raw_rolls.into_iter()
-            .map(|(_, v)| 
-                v.iter().map(RollType::value).sum::<i32>()
-            ).sum::<i32>();
+        let subtotal = raw_rolls
+            .into_iter()
+            .map(|(_, v)| v.iter().map(RollType::value).sum::<i32>())
+            .sum::<i32>();
 
         match self {
             Add(p) => Some(subtotal + p),
@@ -117,27 +115,26 @@ impl Modifier for Arithmetic {
             Mul(p) => Some(subtotal * p),
             Div(p) => Some(subtotal / p),
         }
-    }   
+    }
 }
-
 
 ///
 /// An operation on dice rolls,
 /// after the result is known.
-/// 
+///
 /// Can be:
 /// * mathematical;
 /// * arbitrary code
-/// 
-pub trait Modifier : std::fmt::Debug {
+///
+pub trait Modifier: std::fmt::Debug {
     ///
     /// Name for this operation.
-    /// 
+    ///
     fn id(&self) -> &'static str;
 
     ///
     /// If arithmetic, a symbol for this operation.
-    /// 
+    ///
     fn symbol(&self) -> Option<&'static str>;
 
     fn is_arithmetic(&self) -> bool {
@@ -148,71 +145,57 @@ pub trait Modifier : std::fmt::Debug {
     /// Operation itself, returns Some(i32)
     /// to be a sum, or None if it modifies the Iterator
     /// in place.
-    /// 
-    fn apply(
-        &self, 
-        raw_rolls : Vec<(& usize, &mut Vec<RollType>)>
-    ) -> Option<i32>;
+    ///
+    fn apply(&self, raw_rolls: Vec<(&usize, &mut Vec<RollType>)>) -> Option<i32>;
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Advantage<D : Die + std::fmt::Debug + Copy>(pub D);
+pub struct Advantage<D: Die + std::fmt::Debug + Copy>(pub D);
 
-    impl<D : Die + std::fmt::Debug + Copy + 'static> IntoModifier for Advantage<D> {
-        fn into_modifier(&self) -> Box<dyn Modifier> {
-            Box::new(*self)
-        }
+impl<D: Die + std::fmt::Debug + Copy + 'static> IntoModifier for Advantage<D> {
+    fn into_modifier(&self) -> Box<dyn Modifier> {
+        Box::new(*self)
+    }
+}
+
+impl<D: Die + std::fmt::Debug + Copy> Modifier for Advantage<D> {
+    fn id(&self) -> &'static str {
+        "5E::ADVANTAGE"
     }
 
-    impl<D : Die + std::fmt::Debug + Copy> Modifier for Advantage<D> {
-        fn id(&self) -> &'static str {
-            "5E::ADVANTAGE"
-        }
-
-        fn symbol(&self) -> Option<&'static str> {
-            None
-        }
-
-        fn apply(
-            &self, 
-            raw_rolls : Vec<(& usize, &mut Vec<crate::dice::rolls::RollType>)>
-        ) -> Option<i32> {
-            raw_rolls
-                .into_iter()
-                .for_each(|(sides, rolls)| {
-                    match *sides == self.0.sides() {
-                        true  => {
-                            rolls
-                                .iter_mut()
-                                .for_each(Roll::hide);
-
-                            rolls
-                                .iter_mut()
-                                .max_by_key(|a| a.value())
-                                .map(Roll::show)
-                                .unwrap_or(());
-                    
-                        },
-                        false => {
-                            rolls
-                                .iter_mut()
-                                .for_each(Roll::hide)
-                        }
-                    }
-                });
-
-            None
-        }
+    fn symbol(&self) -> Option<&'static str> {
+        None
     }
 
+    fn apply(
+        &self,
+        raw_rolls: Vec<(&usize, &mut Vec<crate::dice::rolls::RollType>)>,
+    ) -> Option<i32> {
+        raw_rolls
+            .into_iter()
+            .for_each(|(sides, rolls)| match *sides == self.0.sides() {
+                true => {
+                    rolls.iter_mut().for_each(Roll::hide);
+
+                    rolls
+                        .iter_mut()
+                        .max_by_key(|a| a.value())
+                        .map(Roll::show)
+                        .unwrap_or(());
+                }
+                false => rolls.iter_mut().for_each(Roll::hide),
+            });
+
+        None
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::dice::{modifiers::{Modifier, IntoModifier}, Die, rolls::Roll, D20};
+    use crate::dice::D20;
 
     use super::Advantage;
 
-    
     #[test]
     fn advantage() {
         D20(2)

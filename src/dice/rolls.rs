@@ -1,31 +1,37 @@
-use std::{collections::HashMap, ops::{Index, Add, Div, Mul, Sub}};
+use std::{
+    collections::HashMap,
+    ops::{Add, Div, Index, Mul, Sub},
+};
 
 use crate::dice::Die;
 
-use super::modifiers::{Modifier, IntoModifier};
+use super::modifiers::{IntoModifier, Modifier};
 
 ///
 /// Internal type for a die roll.
-/// 
+///
 type RollInner = i32;
 
 ///
 /// Represents the result of rolling a single die.
-/// 
+///
 #[derive(Clone)]
 pub struct Roll {
-    value  : RollInner,
-    
+    value: RollInner,
+
     ///
-    /// Hidden roles are not accounted for in totals. 
-    /// 
-    hidden : bool,
+    /// Hidden roles are not accounted for in totals.
+    ///
+    hidden: bool,
 }
 
 impl std::fmt::Debug for Roll {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Roll({})",
-            &self.hidden
+        write!(
+            f,
+            "Roll({})",
+            &self
+                .hidden
                 .then(|| "_".to_string())
                 .unwrap_or(self.value.to_string())
         )
@@ -34,7 +40,7 @@ impl std::fmt::Debug for Roll {
 
 impl core::cmp::PartialOrd for Roll {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.value.partial_cmp(&other.value) 
+        self.value.partial_cmp(&other.value)
     }
 }
 
@@ -46,7 +52,10 @@ impl core::cmp::PartialEq for Roll {
 
 impl From<RollInner> for Roll {
     fn from(value: RollInner) -> Self {
-        Self { value, hidden : false }
+        Self {
+            value,
+            hidden: false,
+        }
     }
 }
 
@@ -58,14 +67,13 @@ impl Roll {
     pub fn show(&mut self) {
         self.hidden = false;
     }
-    
+
     pub fn hidden(&self) -> bool {
         self.hidden
     }
 
     pub fn value(&self) -> RollInner {
-        self.hidden.then_some(self.value)
-            .unwrap_or(0)
+        self.hidden.then_some(self.value).unwrap_or(0)
     }
 }
 
@@ -73,20 +81,18 @@ pub type RollType = Roll;
 
 ///
 /// Container for a number of dice rolls.
-/// 
+///
 #[derive(Debug, Default)]
 pub struct Rolls {
-    raw_rolls : HashMap<usize, Vec<RollType>>,
-    modifiers : Vec<Box<dyn Modifier>>,
+    raw_rolls: HashMap<usize, Vec<RollType>>,
+    modifiers: Vec<Box<dyn Modifier>>,
 }
 
 impl Rolls {
     ///
     /// Gets the rolls associated with a die.
-    /// 
-    pub fn get(&self, die : &(impl Die + ?Sized))
-        -> impl Iterator<Item = &Roll>
-    {
+    ///
+    pub fn get(&self, die: &(impl Die + ?Sized)) -> impl Iterator<Item = &Roll> {
         self.raw_rolls
             .get(&die.sides())
             .map(|v| v.iter())
@@ -95,13 +101,12 @@ impl Rolls {
 
     ///
     /// Adds rolls associated with a die.
-    /// 
+    ///
     pub fn add(
         &mut self,
-        die : &(impl Die + ?Sized), 
-        values : impl IntoIterator<Item = RollType>
-    ) -> &mut Self
-    {
+        die: &(impl Die + ?Sized),
+        values: impl IntoIterator<Item = RollType>,
+    ) -> &mut Self {
         self.raw_rolls
             .entry(die.sides())
             .or_default()
@@ -112,11 +117,8 @@ impl Rolls {
 
     ///
     /// Add a modifier.
-    /// 
-    pub fn then(
-        mut self,
-        modifier : impl IntoModifier
-    ) -> Self {
+    ///
+    pub fn then(mut self, modifier: impl IntoModifier) -> Self {
         self.modifiers.push(modifier.into_modifier());
         self
     }
@@ -124,7 +126,7 @@ impl Rolls {
     ///
     /// Peek at what the total is,
     /// without needing ownership of `self`.
-    /// 
+    ///
     pub fn peek(&self) -> i32 {
         let mut raw = self.raw_rolls.clone();
         for modifier in self.modifiers.iter() {
@@ -135,18 +137,16 @@ impl Rolls {
             }
         }
 
-        raw
-            .into_iter()
-            .map(|(_, v)| 
-                v.iter().map(RollType::value).sum::<i32>()
-            ).sum::<i32>()
+        raw.into_iter()
+            .map(|(_, v)| v.iter().map(RollType::value).sum::<i32>())
+            .sum::<i32>()
     }
 
     ///
     /// Apply all modifiers,
     /// Returns Ok(i32), or Err(Self)
     ///     depending on the presence of arithmetic methods.
-    /// 
+    ///
     pub fn apply(mut self) -> Result<i32, Self> {
         for modifier in self.modifiers.iter() {
             let v = self.raw_rolls.iter_mut().collect();
@@ -161,10 +161,10 @@ impl Rolls {
 
     ///
     /// 👀 Peek time.
-    /// 
+    ///
     /// Allows for a function to use an immutable reference to this [Roll].
-    /// 
-    pub fn inspect(self, func : impl Fn(&Self) -> ()) -> Self{
+    ///
+    pub fn inspect(self, func: impl Fn(&Self) -> ()) -> Self {
         func(&self);
         self
     }
@@ -172,18 +172,16 @@ impl Rolls {
     ///
     /// Calculate the total of these rolls,
     /// consuming this object.
-    /// 
+    ///
     pub fn total(self) -> i32 {
         self.peek()
     }
 
     ///
     /// Adds all the rolls from the other [Rolls] collection.
-    /// 
-    pub fn extend(mut self, other : Self) -> Self {
-        self.raw_rolls.extend(
-            other.raw_rolls.into_iter()
-        );
+    ///
+    pub fn extend(mut self, other: Self) -> Self {
+        self.raw_rolls.extend(other.raw_rolls.into_iter());
 
         self.modifiers.extend(other.modifiers);
 
@@ -233,7 +231,7 @@ impl Add<Rolls> for Rolls {
     }
 }
 
-impl<D : Die> Index<D> for Rolls {
+impl<D: Die> Index<D> for Rolls {
     type Output = [Roll];
 
     fn index(&self, index: D) -> &Self::Output {
@@ -246,7 +244,10 @@ impl<D : Die> Index<D> for Rolls {
 
 #[cfg(test)]
 mod tests {
-    use crate::dice::{D20, rolls::{RollType, Roll}, D4};
+    use crate::dice::{
+        rolls::{Roll, RollType},
+        D20, D4,
+    };
 
     use super::Rolls;
 
@@ -260,18 +261,22 @@ mod tests {
     #[test]
     fn add() {
         let mut collection = Rolls::default();
-        let v = vec![1,2,3,4].into_iter().map(Roll::from).collect::<Vec<_>>();
+        let v = vec![1, 2, 3, 4]
+            .into_iter()
+            .map(Roll::from)
+            .collect::<Vec<_>>();
 
-        collection
-            .add(&D20, v.clone());
+        collection.add(&D20, v.clone());
 
-        assert_eq!(collection.get(&D20).map(|a| a.clone()).collect::<Vec<_>>(), v);
+        assert_eq!(
+            collection.get(&D20).map(|a| a.clone()).collect::<Vec<_>>(),
+            v
+        );
     }
 
     #[test]
     fn modifiers() {
-        let results = D20(13)
-            .then(|s| s + 2);
+        let results = D20(13).then(|s| s + 2);
 
         assert_eq!(results.modifiers.len(), 1);
     }
