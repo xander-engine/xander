@@ -22,27 +22,44 @@ impl Creature {
         2
     }
 
-    fn score<A: Ability + ?Sized, T: Into<Box<A>>>(&self, ability: T) -> Option<usize> {
+    fn score<A>(&self, ability: impl Into<Box<A>>) -> Option<usize>
+    where 
+        A : Ability + ?Sized,
+    {
         let ability: Box<A> = ability.into();
         self.0.get(&ability.id()).copied()
     }
 
-    fn modifier<A: Ability + ?Sized, T: Into<Box<A>>>(&self, ability: T) -> Option<i32> {
+    fn modifier<A>(&self, ability: impl Into<Box<A>>) -> Option<i32>
+    where
+        A : Ability + ?Sized,
+    {
         self.score(ability).map(|a| (a as i32 - 10).div_floor(2))
     }
 
-    fn check<C: Check + Hash + Eq>(&self, metric: C) -> Rolls {
-        D20()
+    fn check<C>(&self, metric: C) -> Rolls 
+    where 
+        C :  Check + Hash + Eq,
+    {
+        let mut r = D20()
             + self
-                .modifier::<dyn Ability, Box<dyn Ability>>(C::base())
-                .unwrap()
-            + self
-                .proficient(Checks(metric))
-                .map(|t| t.bonus(self, self.proficency_modifier()))
-                .unwrap_or(0)
+                .modifier::<dyn Ability>(C::base())
+                .unwrap();
+
+        if let Some(prof) = self
+            .proficient(Checks(metric))
+            .map(|t| t.bonus(self, self.proficency_modifier()))
+        {
+            r = r + prof;
+        }
+        
+        r
     }
 
-    fn save<S: Save + Ability + Hash + Eq>(&self, metric: S) -> Rolls {
+    fn save<S>(&self, metric: S) -> Rolls 
+    where 
+        S : Save + Ability + Hash + Eq,
+    {
         D20()
             + self
                 .proficient(Saves(metric))
@@ -50,7 +67,7 @@ impl Creature {
                 .unwrap_or(0)
     }
 
-    fn proficient<I, P>(&self, prof: P) -> Option<&dyn ProficiencyType>
+    pub fn proficient<I, P>(&self, prof: P) -> Option<&dyn ProficiencyType>
     where
         I: Identity + Hash + Eq,
         P: Proficiency<I>,
@@ -75,7 +92,7 @@ mod tests {
     use crate::{
         ability::{
             skills::{History, Performance},
-            Charisma, Checks, Constitution, Dexterity, Intelligence, Strength, Wisdom,
+            Charisma, Checks, Constitution, Dexterity, Intelligence, Strength, Wisdom, Saves,
         },
         identity::Identity,
     };
@@ -95,7 +112,9 @@ mod tests {
             (Charisma.id(), 13),
         ]);
 
-        ent.proficiencies().insert(Checks(Performance));
+        ent
+            .proficiencies()
+                .insert(Checks(Performance));
 
         println!("{ent:?}");
 
@@ -106,12 +125,12 @@ mod tests {
     fn proficiency() {
         let mut ent = Creature(HashMap::default(), Proficiencies::default());
 
-        // ent.proficiencies()
-        //     .insert(Dexterity)
-        //     .insert(History);
+        ent.proficiencies()
+            .insert(Saves(Dexterity))
+            .insert(Checks(History));
 
         println!("{:?}", ent.proficiencies());
 
-        // println!("Proficient in DEXTERITY, {}", Dexterity.proficient(&ent));
+        // println!("Proficient in DEXTERITY, {}", Dexterity::proficient(&ent));
     }
 }

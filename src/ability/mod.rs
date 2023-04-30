@@ -1,6 +1,6 @@
 use xander_macros::{abilities, Proficiency};
 
-use crate::{creature::proficiency::Proficiency, identity::Identity};
+use crate::{creature::{proficiency::Proficiency, Creature}, identity::Identity};
 
 pub mod skills;
 
@@ -24,6 +24,13 @@ pub trait Check: Identity {
     fn base() -> Box<dyn Ability>
     where
         Self: Sized;
+
+    fn proficient(&self, ent : &Creature) -> bool
+        where Self  : Sized + Clone + std::hash::Hash + Eq
+    {
+        ent.proficient(Checks(self.clone()))
+            .is_some()    
+    }
 }
 
 pub trait Save {}
